@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -110,7 +111,9 @@
             color: #2c3e50;
         }
 
-        input, select, textarea {
+        input,
+        select,
+        textarea {
             width: 100%;
             padding: 12px;
             border: 2px solid #e0e0e0;
@@ -119,7 +122,9 @@
             transition: all 0.3s ease;
         }
 
-        input:focus, select:focus, textarea:focus {
+        input:focus,
+        select:focus,
+        textarea:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -201,7 +206,8 @@
             background: white;
         }
 
-        th, td {
+        th,
+        td {
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #e0e0e0;
@@ -318,6 +324,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -422,7 +429,7 @@
         <!-- Sales Tab -->
         <div id="sales" class="tab-content">
             <h2>Make a Sale</h2>
-            
+
             <div class="form-group">
                 <div class="form-row">
                     <div class="form-col">
@@ -475,7 +482,7 @@
         <!-- Reports Tab -->
         <div id="reports" class="tab-content">
             <h2>Sales Reports</h2>
-            
+
             <div class="form-group">
                 <div class="form-row">
                     <div class="form-col">
@@ -529,7 +536,7 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal('addProductModal')">&times;</span>
             <h2>Add New Product</h2>
-            
+
             <div class="form-group">
                 <label for="productName">Product Name:</label>
                 <input type="text" id="productName" required>
@@ -607,7 +614,7 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal('addSupplierModal')">&times;</span>
             <h2>Add New Supplier</h2>
-            
+
             <div class="form-group">
                 <label for="supplierName">Supplier Name:</label>
                 <input type="text" id="supplierName" required>
@@ -645,19 +652,48 @@
         let products = [];
         let sales = [];
         let suppliers = [];
+        let customers = [];
         let productIdCounter = 1;
+        let supplierIdCounter = 1;
+        let saleIdCounter = 1;
+        let customerIdCounter = 1;
+
+        // Utility: Save/load data from localStorage
+        function saveData() {
+            localStorage.setItem('products', JSON.stringify(products));
+            localStorage.setItem('sales', JSON.stringify(sales));
+            localStorage.setItem('suppliers', JSON.stringify(suppliers));
+            localStorage.setItem('customers', JSON.stringify(customers));
+            localStorage.setItem('productIdCounter', productIdCounter);
+            localStorage.setItem('supplierIdCounter', supplierIdCounter);
+            localStorage.setItem('saleIdCounter', saleIdCounter);
+            localStorage.setItem('customerIdCounter', customerIdCounter);
+        }
+        function loadData() {
+            products = JSON.parse(localStorage.getItem('products') || '[]');
+            sales = JSON.parse(localStorage.getItem('sales') || '[]');
+            suppliers = JSON.parse(localStorage.getItem('suppliers') || '[]');
+            customers = JSON.parse(localStorage.getItem('customers') || '[]');
+            productIdCounter = parseInt(localStorage.getItem('productIdCounter') || '1');
+            supplierIdCounter = parseInt(localStorage.getItem('supplierIdCounter') || '1');
+            saleIdCounter = parseInt(localStorage.getItem('saleIdCounter') || '1');
+            customerIdCounter = parseInt(localStorage.getItem('customerIdCounter') || '1');
+        }
 
         // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            loadSampleData();
+        document.addEventListener('DOMContentLoaded', function () {
+            if (localStorage.getItem('products')) {
+                loadData();
+            } else {
+                loadSampleData();
+                saveData();
+            }
             updateDashboard();
             updateInventoryTable();
             updateSalesDropdown();
             updateSuppliersDropdown();
             updateSuppliersTable();
             generateReport();
-            
-            // Set today's date as default
             document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
         });
 
@@ -689,97 +725,135 @@
 
         // Tab management
         function showTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Remove active class from all nav tabs
-            document.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Show selected tab
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
-            
-            // Add active class to clicked nav tab
             event.target.classList.add('active');
-            
-            // Update content based on tab
-            if (tabName === 'dashboard') {
-                updateDashboard();
-            } else if (tabName === 'inventory') {
-                updateInventoryTable();
-            } else if (tabName === 'reports') {
-                generateReport();
-            } else if (tabName === 'suppliers') {
-                updateSuppliersTable();
-            }
+            if (tabName === 'dashboard') updateDashboard();
+            else if (tabName === 'inventory') updateInventoryTable();
+            else if (tabName === 'reports') generateReport();
+            else if (tabName === 'suppliers') updateSuppliersTable();
         }
 
-        // Dashboard functions
-        function updateDashboard() {
-            // Calculate statistics
-            const totalProducts = products.reduce((sum, product) => sum + product.quantity, 0);
-            const today = new Date().toISOString().split('T')[0];
-            const todaySales = sales.filter(sale => sale.date === today).reduce((sum, sale) => sum + sale.totalAmount, 0);
-            const thisMonth = new Date().toISOString().slice(0, 7);
-            const monthSales = sales.filter(sale => sale.date.startsWith(thisMonth)).reduce((sum, sale) => sum + sale.totalAmount, 0);
-            const totalProfit = sales.reduce((sum, sale) => sum + sale.profit, 0);
+        // Modal management
+        function showAddProductModal(productId) {
+            // If productId is provided, it's restock/edit
+            if (productId) {
+                const product = products.find(p => p.id === productId);
+                if (product) {
+                    document.getElementById('productName').value = product.name;
+                    document.getElementById('productBrand').value = product.brand;
+                    document.getElementById('productModel').value = product.model;
+                    document.getElementById('productCategory').value = product.category;
+                    document.getElementById('productQuantity').value = product.quantity;
+                    document.getElementById('productSupplier').value = product.supplier;
+                    document.getElementById('productPurchasePrice').value = product.purchasePrice;
+                    document.getElementById('productSellingPrice').value = product.sellingPrice;
+                    document.getElementById('productDescription').value = product.description;
+                    document.getElementById('addProductModal').dataset.editId = productId;
+                }
+            } else {
+                // Clear form for new product
+                document.getElementById('productName').value = '';
+                document.getElementById('productBrand').value = '';
+                document.getElementById('productModel').value = '';
+                document.getElementById('productCategory').value = '';
+                document.getElementById('productQuantity').value = '';
+                document.getElementById('productSupplier').value = '';
+                document.getElementById('productPurchasePrice').value = '';
+                document.getElementById('productSellingPrice').value = '';
+                document.getElementById('productDescription').value = '';
+                delete document.getElementById('addProductModal').dataset.editId;
+            }
+            document.getElementById('addProductModal').style.display = 'block';
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
 
-            // Update dashboard stats
-            document.getElementById('totalProducts').textContent = totalProducts;
-            document.getElementById('todaySales').textContent = `$${todaySales.toFixed(2)}`;
-            document.getElementById('monthSales').textContent = `$${monthSales.toFixed(2)}`;
-            document.getElementById('totalProfit').textContent = `$${totalProfit.toFixed(2)}`;
+        // Product CRUD
+        function addProduct() {
+            // Validation
+            const name = document.getElementById('productName').value.trim();
+            const brand = document.getElementById('productBrand').value.trim();
+            const model = document.getElementById('productModel').value.trim();
+            const category = document.getElementById('productCategory').value;
+            const quantity = parseInt(document.getElementById('productQuantity').value);
+            const supplier = document.getElementById('productSupplier').value;
+            const purchasePrice = parseFloat(document.getElementById('productPurchasePrice').value);
+            const sellingPrice = parseFloat(document.getElementById('productSellingPrice').value);
+            const description = document.getElementById('productDescription').value.trim();
 
-            // Update recent sales table
-            const recentSales = sales.slice(-5).reverse();
-            const recentSalesBody = document.getElementById('recentSalesBody');
-            recentSalesBody.innerHTML = '';
-            
-            recentSales.forEach(sale => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${sale.date}</td>
-                    <td>${sale.productName}</td>
-                    <td>${sale.customerName}</td>
-                    <td>${sale.quantity}</td>
-                    <td>$${sale.totalAmount.toFixed(2)}</td>
-                    <td>$${sale.profit.toFixed(2)}</td>
-                `;
-                recentSalesBody.appendChild(row);
-            });
-
-            // Update low stock alerts
-            const lowStockProducts = products.filter(product => product.quantity <= 5);
-            const lowStockBody = document.getElementById('lowStockBody');
-            lowStockBody.innerHTML = '';
-            
-            lowStockProducts.forEach(product => {
-                const row = document.createElement('tr');
-                row.className = 'low-stock';
-                row.innerHTML = `
-                    <td>${product.name}</td>
-                    <td>${product.brand}</td>
-                    <td>${product.quantity}</td>
-                    <td><button class="btn btn-primary" onclick="showAddProductModal(${product.id})">Restock</button></td>
-                `;
-                lowStockBody.appendChild(row);
-            });
+            if (!name || !brand || !category || isNaN(quantity) || quantity < 0 || !supplier || isNaN(purchasePrice) || isNaN(sellingPrice)) {
+                alert('Please fill all required fields with valid values.');
+                return;
+            }
+            if (sellingPrice < purchasePrice) {
+                alert('Selling price must be greater than purchase price.');
+                return;
+            }
+            // Duplicate prevention
+            if (!document.getElementById('addProductModal').dataset.editId &&
+                products.some(p => p.name.toLowerCase() === name.toLowerCase() && p.brand.toLowerCase() === brand.toLowerCase() && p.model.toLowerCase() === model.toLowerCase())) {
+                alert('Duplicate product detected.');
+                return;
+            }
+            // Edit or Add
+            const editId = document.getElementById('addProductModal').dataset.editId;
+            if (editId) {
+                const product = products.find(p => p.id == editId);
+                if (product) {
+                    product.name = name;
+                    product.brand = brand;
+                    product.model = model;
+                    product.category = category;
+                    product.quantity = quantity;
+                    product.supplier = supplier;
+                    product.purchasePrice = purchasePrice;
+                    product.sellingPrice = sellingPrice;
+                    product.description = description;
+                }
+            } else {
+                products.push({
+                    id: productIdCounter++,
+                    name, brand, model, category, quantity, supplier, purchasePrice, sellingPrice, description
+                });
+            }
+            saveData();
+            closeModal('addProductModal');
+            updateInventoryTable();
+            updateDashboard();
+            updateSalesDropdown();
+        }
+        function editProduct(productId) {
+            showAddProductModal(productId);
+        }
+        function deleteProduct(productId) {
+            if (!confirm('Are you sure you want to delete this product?')) return;
+            products = products.filter(p => p.id !== productId);
+            saveData();
+            updateInventoryTable();
+            updateDashboard();
+            updateSalesDropdown();
         }
 
         // Inventory management
         function updateInventoryTable() {
             const inventoryBody = document.getElementById('inventoryBody');
             inventoryBody.innerHTML = '';
-            
-            products.forEach(product => {
+            let filteredProducts = products;
+            const search = document.getElementById('productSearch').value?.toLowerCase() || '';
+            if (search) {
+                filteredProducts = filteredProducts.filter(p =>
+                    p.name.toLowerCase().includes(search) ||
+                    p.brand.toLowerCase().includes(search) ||
+                    p.category.toLowerCase().includes(search)
+                );
+            }
+            filteredProducts.forEach(product => {
                 const profit = product.sellingPrice - product.purchasePrice;
                 const row = document.createElement('tr');
-                if (product.quantity <= 5) {
-                    row.className = 'low-stock';
-                }
+                if (product.quantity <= 5) row.className = 'low-stock';
                 row.innerHTML = `
                     <td>${product.id}</td>
                     <td>${product.name}</td>
@@ -793,3 +867,330 @@
                         <button class="btn btn-secondary" onclick="editProduct(${product.id})">Edit</button>
                         <button class="btn btn-danger" onclick="deleteProduct(${product.id})">Delete</button>
                     </td>
+                `;
+                inventoryBody.appendChild(row);
+            });
+        }
+        function searchProducts() {
+            updateInventoryTable();
+        }
+
+        // Sales Dropdown
+        function updateSalesDropdown() {
+            const saleProduct = document.getElementById('saleProduct');
+            saleProduct.innerHTML = '<option value="">Choose a product...</option>';
+            products.forEach(product => {
+                if (product.quantity > 0) {
+                    saleProduct.innerHTML += `<option value="${product.id}">${product.name} (${product.brand}) [${product.quantity} in stock]</option>`;
+                }
+            });
+        }
+        function updateSalePrice() {
+            const productId = parseInt(document.getElementById('saleProduct').value);
+            const product = products.find(p => p.id === productId);
+            if (product) {
+                document.getElementById('salePrice').value = product.sellingPrice;
+                document.getElementById('saleQuantity').max = product.quantity;
+            } else {
+                document.getElementById('salePrice').value = '';
+                document.getElementById('saleQuantity').max = '';
+            }
+            updateSaleTotal();
+        }
+        function updateSaleTotal() {
+            const qty = parseInt(document.getElementById('saleQuantity').value) || 0;
+            const price = parseFloat(document.getElementById('salePrice').value) || 0;
+            document.getElementById('saleTotal').value = (qty * price).toFixed(2);
+        }
+
+        // Sales Processing
+        function processSale() {
+            const productId = parseInt(document.getElementById('saleProduct').value);
+            const quantity = parseInt(document.getElementById('saleQuantity').value);
+            const unitPrice = parseFloat(document.getElementById('salePrice').value);
+            const totalAmount = parseFloat(document.getElementById('saleTotal').value);
+            const customerName = document.getElementById('customerName').value.trim();
+            const customerPhone = document.getElementById('customerPhone').value.trim();
+            const notes = document.getElementById('saleNotes').value.trim();
+
+            if (!productId || !quantity || !unitPrice || !customerName || !customerPhone) {
+                alert('Please fill all required fields.');
+                return;
+            }
+            const product = products.find(p => p.id === productId);
+            if (!product || product.quantity < quantity) {
+                alert('Insufficient stock.');
+                return;
+            }
+            // Deduct stock
+            product.quantity -= quantity;
+            // Profit calculation
+            const profit = (unitPrice - product.purchasePrice) * quantity;
+            // Add sale
+            sales.push({
+                id: saleIdCounter++,
+                productId,
+                productName: product.name,
+                customerName,
+                customerPhone,
+                quantity,
+                unitPrice,
+                totalAmount,
+                profit,
+                date: new Date().toISOString().split('T')[0],
+                notes
+            });
+            // Add customer if not exists
+            let customer = customers.find(c => c.phone === customerPhone);
+            if (!customer) {
+                customers.push({
+                    id: customerIdCounter++,
+                    name: customerName,
+                    phone: customerPhone,
+                    purchaseHistory: []
+                });
+                customer = customers[customers.length - 1];
+            }
+            customer.purchaseHistory.push({
+                productId,
+                productName: product.name,
+                quantity,
+                totalAmount,
+                date: new Date().toISOString().split('T')[0]
+            });
+            saveData();
+            updateDashboard();
+            updateInventoryTable();
+            updateSalesDropdown();
+            alert('Sale completed successfully!');
+            // Clear sale form
+            document.getElementById('saleProduct').value = '';
+            document.getElementById('saleQuantity').value = 1;
+            document.getElementById('salePrice').value = '';
+            document.getElementById('saleTotal').value = '';
+            document.getElementById('customerName').value = '';
+            document.getElementById('customerPhone').value = '';
+            document.getElementById('saleNotes').value = '';
+        }
+
+        // Supplier CRUD
+        function showAddSupplierModal(supplierId) {
+            if (supplierId) {
+                const supplier = suppliers.find(s => s.id === supplierId);
+                if (supplier) {
+                    document.getElementById('supplierName').value = supplier.name;
+                    document.getElementById('supplierContact').value = supplier.contact;
+                    document.getElementById('supplierEmail').value = supplier.email;
+                    document.getElementById('supplierAddress').value = supplier.address;
+                    document.getElementById('supplierProducts').value = supplier.products;
+                    document.getElementById('addSupplierModal').dataset.editId = supplierId;
+                }
+            } else {
+                document.getElementById('supplierName').value = '';
+                document.getElementById('supplierContact').value = '';
+                document.getElementById('supplierEmail').value = '';
+                document.getElementById('supplierAddress').value = '';
+                document.getElementById('supplierProducts').value = '';
+                delete document.getElementById('addSupplierModal').dataset.editId;
+            }
+            document.getElementById('addSupplierModal').style.display = 'block';
+        }
+        function addSupplier() {
+            const name = document.getElementById('supplierName').value.trim();
+            const contact = document.getElementById('supplierContact').value.trim();
+            const email = document.getElementById('supplierEmail').value.trim();
+            const address = document.getElementById('supplierAddress').value.trim();
+            const productsSupplied = document.getElementById('supplierProducts').value.trim();
+            if (!name || !contact) {
+                alert('Please fill all required fields.');
+                return;
+            }
+            // Duplicate prevention
+            if (!document.getElementById('addSupplierModal').dataset.editId &&
+                suppliers.some(s => s.name.toLowerCase() === name.toLowerCase() && s.contact === contact)) {
+                alert('Duplicate supplier detected.');
+                return;
+            }
+            const editId = document.getElementById('addSupplierModal').dataset.editId;
+            if (editId) {
+                const supplier = suppliers.find(s => s.id == editId);
+                if (supplier) {
+                    supplier.name = name;
+                    supplier.contact = contact;
+                    supplier.email = email;
+                    supplier.address = address;
+                    supplier.products = productsSupplied;
+                }
+            } else {
+                suppliers.push({
+                    id: supplierIdCounter++,
+                    name, contact, email, address, products: productsSupplied
+                });
+            }
+            saveData();
+            closeModal('addSupplierModal');
+            updateSuppliersTable();
+            updateSuppliersDropdown();
+        }
+        function editSupplier(supplierId) {
+            showAddSupplierModal(supplierId);
+        }
+        function deleteSupplier(supplierId) {
+            if (!confirm('Are you sure you want to delete this supplier?')) return;
+            suppliers = suppliers.filter(s => s.id !== supplierId);
+            saveData();
+            updateSuppliersTable();
+            updateSuppliersDropdown();
+        }
+        function updateSuppliersTable() {
+            const suppliersBody = document.getElementById('suppliersBody');
+            suppliersBody.innerHTML = '';
+            suppliers.forEach(supplier => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${supplier.name}</td>
+                    <td>${supplier.contact}</td>
+                    <td>${supplier.email}</td>
+                    <td>${supplier.products}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="editSupplier(${supplier.id})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteSupplier(${supplier.id})">Delete</button>
+                    </td>
+                `;
+                suppliersBody.appendChild(row);
+            });
+        }
+        function updateSuppliersDropdown() {
+            const supplierSelect = document.getElementById('productSupplier');
+            supplierSelect.innerHTML = '<option value="">Select Supplier</option>';
+            suppliers.forEach(supplier => {
+                supplierSelect.innerHTML += `<option value="${supplier.name}">${supplier.name}</option>`;
+            });
+        }
+
+        // Dashboard functions
+        function updateDashboard() {
+            const totalProducts = products.reduce((sum, product) => sum + product.quantity, 0);
+            const today = new Date().toISOString().split('T')[0];
+            const todaySales = sales.filter(sale => sale.date === today).reduce((sum, sale) => sum + sale.totalAmount, 0);
+            const thisMonth = new Date().toISOString().slice(0, 7);
+            const monthSales = sales.filter(sale => sale.date.startsWith(thisMonth)).reduce((sum, sale) => sum + sale.totalAmount, 0);
+            const totalProfit = sales.reduce((sum, sale) => sum + sale.profit, 0);
+
+            document.getElementById('totalProducts').textContent = totalProducts;
+            document.getElementById('todaySales').textContent = `$${todaySales.toFixed(2)}`;
+            document.getElementById('monthSales').textContent = `$${monthSales.toFixed(2)}`;
+            document.getElementById('totalProfit').textContent = `$${totalProfit.toFixed(2)}`;
+
+            // Recent sales
+            const recentSales = sales.slice(-5).reverse();
+            const recentSalesBody = document.getElementById('recentSalesBody');
+            recentSalesBody.innerHTML = '';
+            recentSales.forEach(sale => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${sale.date}</td>
+                    <td>${sale.productName}</td>
+                    <td>${sale.customerName}</td>
+                    <td>${sale.quantity}</td>
+                    <td>$${sale.totalAmount.toFixed(2)}</td>
+                    <td>$${sale.profit.toFixed(2)}</td>
+                `;
+                recentSalesBody.appendChild(row);
+            });
+
+            // Low stock alerts
+            const lowStockProducts = products.filter(product => product.quantity <= 5);
+            const lowStockBody = document.getElementById('lowStockBody');
+            lowStockBody.innerHTML = '';
+            lowStockProducts.forEach(product => {
+                const row = document.createElement('tr');
+                row.className = 'low-stock';
+                row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${product.brand}</td>
+                    <td>${product.quantity}</td>
+                    <td><button class="btn btn-primary" onclick="showAddProductModal(${product.id})">Restock</button></td>
+                `;
+                lowStockBody.appendChild(row);
+            });
+        }
+
+        // Reports
+        function generateReport() {
+            const type = document.getElementById('reportType').value;
+            const date = document.getElementById('reportDate').value;
+            let html = '';
+            if (type === 'daily') {
+                const dailySales = sales.filter(sale => sale.date === date);
+                html += `<h3>Daily Sales Report (${date})</h3>`;
+                html += `<table><thead><tr><th>Product</th><th>Customer</th><th>Qty</th><th>Amount</th><th>Profit</th></tr></thead><tbody>`;
+                dailySales.forEach(sale => {
+                    html += `<tr>
+                        <td>${sale.productName}</td>
+                        <td>${sale.customerName}</td>
+                        <td>${sale.quantity}</td>
+                        <td>$${sale.totalAmount.toFixed(2)}</td>
+                        <td>$${sale.profit.toFixed(2)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+                html += `<p>Total Sales: $${dailySales.reduce((sum, s) => sum + s.totalAmount, 0).toFixed(2)}</p>`;
+                html += `<p>Total Profit: $${dailySales.reduce((sum, s) => sum + s.profit, 0).toFixed(2)}</p>`;
+            } else if (type === 'monthly') {
+                const month = date.slice(0, 7);
+                const monthlySales = sales.filter(sale => sale.date.startsWith(month));
+                html += `<h3>Monthly Sales Report (${month})</h3>`;
+                html += `<table><thead><tr><th>Date</th><th>Product</th><th>Customer</th><th>Qty</th><th>Amount</th><th>Profit</th></tr></thead><tbody>`;
+                monthlySales.forEach(sale => {
+                    html += `<tr>
+                        <td>${sale.date}</td>
+                        <td>${sale.productName}</td>
+                        <td>${sale.customerName}</td>
+                        <td>${sale.quantity}</td>
+                        <td>$${sale.totalAmount.toFixed(2)}</td>
+                        <td>$${sale.profit.toFixed(2)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+                html += `<p>Total Sales: $${monthlySales.reduce((sum, s) => sum + s.totalAmount, 0).toFixed(2)}</p>`;
+                html += `<p>Total Profit: $${monthlySales.reduce((sum, s) => sum + s.profit, 0).toFixed(2)}</p>`;
+            } else if (type === 'yearly') {
+                const year = date.slice(0, 4);
+                const yearlySales = sales.filter(sale => sale.date.startsWith(year));
+                html += `<h3>Yearly Sales Report (${year})</h3>`;
+                html += `<table><thead><tr><th>Date</th><th>Product</th><th>Customer</th><th>Qty</th><th>Amount</th><th>Profit</th></tr></thead><tbody>`;
+                yearlySales.forEach(sale => {
+                    html += `<tr>
+                        <td>${sale.date}</td>
+                        <td>${sale.productName}</td>
+                        <td>${sale.customerName}</td>
+                        <td>${sale.quantity}</td>
+                        <td>$${sale.totalAmount.toFixed(2)}</td>
+                        <td>$${sale.profit.toFixed(2)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+                html += `<p>Total Sales: $${yearlySales.reduce((sum, s) => sum + s.totalAmount, 0).toFixed(2)}</p>`;
+                html += `<p>Total Profit: $${yearlySales.reduce((sum, s) => sum + s.profit, 0).toFixed(2)}</p>`;
+            } else if (type === 'profit') {
+                html += `<h3>Profit Analysis</h3>`;
+                html += `<table><thead><tr><th>Product</th><th>Total Sold</th><th>Total Profit</th></tr></thead><tbody>`;
+                products.forEach(product => {
+                    const productSales = sales.filter(sale => sale.productId === product.id);
+                    const totalSold = productSales.reduce((sum, s) => sum + s.quantity, 0);
+                    const totalProfit = productSales.reduce((sum, s) => sum + s.profit, 0);
+                    html += `<tr>
+                        <td>${product.name}</td>
+                        <td>${totalSold}</td>
+                        <td>$${totalProfit.toFixed(2)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+            }
+            document.getElementById('reportContent').innerHTML = html;
+        }
+    </script>
+</body>
+
+</html>
